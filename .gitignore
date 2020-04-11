@@ -1,0 +1,10 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Notebook files
+Sentiment Analysis/aclImdb_v1.tar.gz
+data
+cache
+Project/.ipynb_checkpoints/
