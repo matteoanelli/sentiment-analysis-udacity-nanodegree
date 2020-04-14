@@ -25,7 +25,8 @@ def model_fn(model_dir):
 
     # Determine the device and construct the model.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = LSTMClassifier(model_info['embedding_dim'], model_info['hidden_dim'], model_info['vocab_size'])
+    model = LSTMClassifier(model_info['embedding_dim'], model_info['hidden_dim'], 
+                           model_info['n_layers'], model_info['bidirectional'], model_info['dropout'])
 
     # Load the stored model parameters.
     model_path = os.path.join(model_dir, 'model.pth')
@@ -45,7 +46,7 @@ def model_fn(model_dir):
 def _get_train_data_loader(batch_size, training_dir):
     print("Get train data loader.")
 
-    train_data = pd.read_csv(os.path.join(training_dir, "train.csv"), header=None, names=None)
+    train_data = pd.read_csv(os.path.join(training_dir, "train_test.csv"), header=None, names=None)
 
     train_y = torch.from_numpy(train_data[[0]].values).float().squeeze()
     train_X = torch.from_numpy(train_data.drop([0], axis=1).values).long()
@@ -109,6 +110,13 @@ if __name__ == '__main__':
                         help='size of the hidden dimension (default: 100)')
     parser.add_argument('--vocab_size', type=int, default=5000, metavar='N',
                         help='size of the vocabulary (default: 5000)')
+    parser.add_argument('--n_layers', type=int, default=1, metavar='N',
+                        help='number of LSTM unit (hidden layer) (default: 1)')
+    parser.add_argument('--bidirectional', type=bool, default=False, metavar='N',
+                        help='Boolean value True if the RNN is bidirectional (default: False)')
+    parser.add_argument('--dropout', type=float, default=0.0, metavar='N',
+                        help='LSTM dropout value (default: 5000)')
+    
 
     # SageMaker Parameters
     parser.add_argument('--hosts', type=list, default=json.loads(os.environ['SM_HOSTS']))
@@ -118,7 +126,8 @@ if __name__ == '__main__':
     parser.add_argument('--num-gpus', type=int, default=os.environ['SM_NUM_GPUS'])
 
     args = parser.parse_args()
-
+    
+    print('Bidirectional value 1 :{}'.format(args.bidirectional))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device {}.".format(device))
 
@@ -126,15 +135,21 @@ if __name__ == '__main__':
 
     # Load the training data.
     train_loader = _get_train_data_loader(args.batch_size, args.data_dir)
+    
+    print('Bidirectional value 2 :{}'.format(args.bidirectional))
 
     # Build the model.
-    model = LSTMClassifier(args.embedding_dim, args.hidden_dim, args.vocab_size).to(device)
+    model = LSTMClassifier(args.embedding_dim, args.hidden_dim, args.vocab_size, 
+                           args.n_layers, args.bidirectional, args.dropout).to(device)
 
     with open(os.path.join(args.data_dir, "word_dict.pkl"), "rb") as f:
         model.word_dict = pickle.load(f)
+      
+    print('Bidirectional value 3 :{}'.format(args.bidirectional))
 
-    print("Model loaded with embedding_dim {}, hidden_dim {}, vocab_size {}.".format(
-        args.embedding_dim, args.hidden_dim, args.vocab_size
+    print("Model loaded with embedding_dim {}, hidden_dim {}, vocab_size {}, n_layers {}, bidirectional {}, dropout {}.".format(
+        args.embedding_dim, args.hidden_dim, args.vocab_size, 
+        args.n_layers, args.bidirectional, args.dropout
     ))
 
     # Train the model.
@@ -150,6 +165,9 @@ if __name__ == '__main__':
             'embedding_dim': args.embedding_dim,
             'hidden_dim': args.hidden_dim,
             'vocab_size': args.vocab_size,
+            'n_layers' : args.n_layers,
+            'bidirectional' : args.bidirectional,
+            'dropout' : args.dropout
         }
         torch.save(model_info, f)
 
