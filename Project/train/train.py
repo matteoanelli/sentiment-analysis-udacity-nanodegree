@@ -25,7 +25,7 @@ def model_fn(model_dir):
 
     # Determine the device and construct the model.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = LSTMClassifier(model_info['embedding_dim'], model_info['hidden_dim'], 
+    model = LSTMClassifier(model_info['embedding_dim'], model_info['hidden_dim'], model_info['vocab_size'],
                            model_info['n_layers'], model_info['bidirectional'], model_info['dropout'])
 
     # Load the stored model parameters.
